@@ -245,8 +245,22 @@ namespace MscrmTools.PortalRecordsMover
                     }
 
                     var list = (EntityCollection)evt.Result;
+                    if (settings.ExportAsDirectory)
+                        saveAsDirectory(list);
+                    else
+                        saveAsFile(list);
+                },
+                ProgressChanged = evt =>
+                {
+                    SetWorkingMessage(evt.UserState.ToString());
+                    SendMessageToStatusBar?.Invoke(this, new StatusBarMessageEventArgs(evt.UserState.ToString()));
+                }
+            });
+        }
 
-                    var sfd = new SaveFileDialog
+        private void saveAsFile(EntityCollection list)
+        {
+            var sfd = new SaveFileDialog
             {
                 Filter = "XML document (*.xml)|*.xml",
                 AddExtension = true,
@@ -266,14 +280,113 @@ namespace MscrmTools.PortalRecordsMover
 
                 MessageBox.Show(this, $"Records exported to {sfd.FileName}!", "Success", MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
-                    }
-                },
-                ProgressChanged = evt =>
+            }
+
+        }
+
+        private void saveAsDirectory(EntityCollection list)
+        {
+            var sfd = new FolderBrowserDialog
+            {
+                SelectedPath = settings.LastExportPath
+            };
+
+            if (sfd.ShowDialog(this) == DialogResult.OK)
+            {
+                var xwSettings = new XmlWriterSettings { Indent = true };
+                var serializer = new DataContractSerializer(typeof(Entity), new List<Type> { typeof(EntityCollection) });
+
+                foreach (var record in list.Entities)
                 {
-                    SetWorkingMessage(evt.UserState.ToString());
-                    SendMessageToStatusBar?.Invoke(this, new StatusBarMessageEventArgs(evt.UserState.ToString()));
+                    try
+                    {
+                        var relativepath = getRelativePath(record, list.Entities);
+                        var fullpath = Path.Combine(sfd.SelectedPath, relativepath);
+                        var info = Directory.CreateDirectory(Path.GetDirectoryName(fullpath));
+                        using (var w = XmlWriter.Create(fullpath, xwSettings))
+                        {
+                            var simpleentity = new Entity(record.LogicalName, record.Id);
+                            simpleentity.Attributes = record.Attributes;
+                            serializer.WriteObject(w, simpleentity);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        //TODO
+                    }
                 }
-            });
+                MessageBox.Show(this, $"Records exported to {sfd.SelectedPath}!", "Success", MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+            }
+
+        }
+
+
+        private String getRelativePath(Entity record, DataCollection<Entity> allrecords)
+        {
+
+            var path = "";
+            var emd = settings.AllEntities.First(ent => ent.LogicalName == record.LogicalName);
+
+            // Use recordid_recordname as file name
+            var filename = $"{record.Id}.xml";
+            var primaryattname = emd.PrimaryNameAttribute;
+            if (null != primaryattname)
+            {
+                var recordname = record.GetAttributeValue<String>(primaryattname);
+                if (!string.IsNullOrWhiteSpace(recordname)) {
+                // add guid to file name to avoid collision
+                // recordname can be path
+                filename = Path.Combine(Path.GetDirectoryName(recordname),$"{record.Id}_{Path.GetFileName(recordname)}.xml");
+                }
+            }
+
+            if (record.LogicalName == "adx_website") return filename;
+
+            // Relative to Parent Entity
+            Entity parentEntity = null;
+            var adxwebsite_attrname = "adx_websiteid";
+            if (emd.IsIntersect.Value)
+            {
+                // Relation N:N
+                var relation = emd.ManyToManyRelationships[0];
+                parentEntity = allrecords.FirstOrDefault(e => e.LogicalName == relation.Entity1LogicalName && e.Id == record.GetAttributeValue<Guid>(relation.Entity1IntersectAttribute));
+            } else
+            {
+                if (RecordManager.ParentEntityOrder.ContainsKey(record.LogicalName))
+                {
+                    var parentEntityFiledOrderList = RecordManager.ParentEntityOrder[record.LogicalName];
+                    EntityReference attrvalue = null;
+                    var attrname = parentEntityFiledOrderList.FirstOrDefault(fieldname => null != (attrvalue = record.GetAttributeValue<EntityReference>(fieldname)) );
+                    if (null != attrvalue)
+                        parentEntity = allrecords.FirstOrDefault(e => e.LogicalName == attrvalue.LogicalName && e.Id == attrvalue.Id);
+                } else if (emd.Attributes.Any(a => a is LookupAttributeMetadata &&
+                        ((LookupAttributeMetadata)a).Targets[0] == "adx_website" &&
+                        !String.IsNullOrEmpty(adxwebsite_attrname = a.LogicalName)
+                        ))
+                {
+                    parentEntity = new Entity("adx_website", record.GetAttributeValue<EntityReference>(adxwebsite_attrname).Id);
+                    //path = record.GetAttributeValue<EntityReference>(adxwebsite_attrname).Id.ToString();
+                }
+                //else
+                //// Entity without direct relation with site (should be filtered on retrieve)
+                //if (record.LogicalName == "annotation")
+                //{
+                //    var objectid = record.GetAttributeValue<EntityReference>("objectid");
+                //    parentEntity = allrecords.FirstOrDefault(e => e.LogicalName == objectid.LogicalName && e.Id == objectid.Id);
+                //}
+                //throw new NotImplementedException(emd.ToString());
+            }
+            // Relative to parent entity
+            if (null != parentEntity) path = Path.Combine(Path.GetDirectoryName(getRelativePath(parentEntity, allrecords)), parentEntity.Id.ToString());
+
+            // Relative to LogicalName
+            path = Path.Combine(path, record.LogicalName);
+
+            // Use ?? Id as file Name
+            path = Path.Combine(path, filename);
+
+            return path;
         }
 
         private void tsbImportRecords_Click(object sender, EventArgs e)
