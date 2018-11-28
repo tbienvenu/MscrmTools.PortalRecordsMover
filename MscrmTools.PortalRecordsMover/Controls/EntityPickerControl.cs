@@ -70,7 +70,7 @@ namespace MscrmTools.PortalRecordsMover.Controls
             items.Clear();
             foreach (var emd in Metadata.Where(m => m.LogicalName != "annotation" && (m.IsIntersect == null || m.IsIntersect.Value == false)))
             {
-                items.Add(new ListViewItem(emd.DisplayName?.UserLocalizedLabel?.Label ?? emd.SchemaName)
+                items.Add(new ListViewItem($"{emd.DisplayName?.UserLocalizedLabel?.Label} ({emd.SchemaName})")
                 {
                     Tag = emd,
                     Checked = settings.SelectedEntities.Contains(emd.LogicalName)
