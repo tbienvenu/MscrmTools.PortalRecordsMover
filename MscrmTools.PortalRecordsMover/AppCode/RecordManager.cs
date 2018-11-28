@@ -14,6 +14,27 @@ namespace MscrmTools.PortalRecordsMover.AppCode
 {
     internal class RecordManager
     {
+        public static readonly Dictionary<string, string[]> ParentEntityOrder = new Dictionary<string, string[]> {
+            {"annotation", new string[] { "objectid" } },
+            {"adx_webpage", new string[] { "adx_rootwebpageid", "adx_parentpageid", "adx_websiteid" } },
+            {"adx_webpageaccesscontrolrule", new string[] { "adx_webpageid", "adx_websiteid" } },
+            {"adx_sitemarker", new string[] { "adx_pageid", "adx_websiteid" } },
+            {"adx_webfile", new string[] { "adx_parentpageid", "adx_websiteid" } },
+            {"adx_urlhistory", new string[] { "adx_webfileid", "adx_webpageid", "adx_websiteid" } },
+            {"adx_webformstep", new string[] { "adx_webform"} },
+            {"adx_webformsession", new string[] { "adx_webform" } },
+            {"adx_weblink", new string[] { "adx_parentweblinkid", "adx_weblinksetid" } },
+            {"adx_webformmetadata", new string[] { "adx_webformstep" } },
+            {"adx_pollsubmission", new string[] { "adx_pollid" } },
+            {"adx_polloption", new string[] { "adx_pollid" } },
+            {"adx_entityformmetadata", new string[] { "adx_entityform" } },
+            {"adx_communityforumthread", new string[] { "adx_forumid" } },
+            {"adx_communityforumpost", new string[] { "adx_regardingid", "adx_forumthreadid" } },
+            {"adx_communityforumannouncement", new string[] { "adx_forumid" } },
+            {"adx_communityforumaccesspermission", new string[] { "adx_forumid" } },
+        };
+
+
         private const int maxErrorLoopCount = 5;
         private readonly LogManager logger;
         private readonly List<EntityReference> recordsToDeactivate;

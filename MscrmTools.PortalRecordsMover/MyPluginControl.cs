@@ -740,6 +740,18 @@ namespace MscrmTools.PortalRecordsMover
             if (settings.WebsiteFilter != Guid.Empty && (emd.LogicalName == "adx_website" || emd.Attributes.Any(a => a is LookupAttributeMetadata && ((LookupAttributeMetadata)a).Targets[0] == "adx_website" && !String.IsNullOrEmpty(adxwebsite_attrname = a.LogicalName))))
             {
                 query.Criteria.AddCondition(adxwebsite_attrname, ConditionOperator.Equal, settings.WebsiteFilter);
+            }else if(settings.WebsiteFilter != Guid.Empty)
+            {
+                // No link to adx_website dor this entity
+                // Include filter on linked-entity (i.e. on the parent of the records)
+                // hypothesis : Last field in RecordManager.ParentEntityOrder is always filled
+                var filter = new FilterExpression()
+                {
+                    FilterOperator = LogicalOperator.Or
+                };
+                
+                createLinkedCondition(query.LinkEntities, filter, emd, settings);
+                if (filter.Conditions.Count>0) query.Criteria.AddFilter(filter);
             }
 
             if (settings.ActiveItemsOnly && emd.LogicalName != "annotation")
@@ -748,6 +760,39 @@ namespace MscrmTools.PortalRecordsMover
             }
 
             return Service.RetrieveMultiple(query);
+        }
+
+        private void createLinkedCondition(DataCollection<LinkEntity> linkcollection, FilterExpression globalfilter, EntityMetadata emd, ExportSettings settings)
+        {
+            if (!RecordManager.ParentEntityOrder.ContainsKey(emd.LogicalName)) return;
+            // hypothesis : Last field in RecordManager.ParentEntityOrder is always filled
+            var parentfieldname = RecordManager.ParentEntityOrder[emd.LogicalName].Last();
+            
+            // Add Link-entity
+            var parentRelationMetadata = emd.ManyToOneRelationships.First(meta => meta.ReferencingAttribute == parentfieldname);
+
+            var link = new LinkEntity( emd.LogicalName, parentRelationMetadata.ReferencedEntity, parentfieldname, parentRelationMetadata.ReferencedAttribute, JoinOperator.LeftOuter);
+            var alias = $"x{Guid.NewGuid().ToString("N")}";
+            link.EntityAlias = alias;
+            linkcollection.Add(link);
+
+            var linkedentityMetaData = settings.AllEntities.First(meta => meta.LogicalName == parentRelationMetadata.ReferencedEntity);
+
+            // Add filter
+            var adxwebsite_attrname = "adx_websiteid";
+            if (linkedentityMetaData.LogicalName == "adx_website" || linkedentityMetaData.Attributes.Any(a => a is LookupAttributeMetadata && ((LookupAttributeMetadata)a).Targets[0] == "adx_website" && !String.IsNullOrEmpty(adxwebsite_attrname = a.LogicalName)))
+            {
+                // The linked entity contains a reference to adx_website
+                globalfilter.AddCondition(alias, adxwebsite_attrname, ConditionOperator.Equal, settings.WebsiteFilter);
+            } else
+            {
+                // The linked entity doesn't contains a reference to adx_website
+                // Recurse :
+                var lc = link.LinkEntities;
+                createLinkedCondition(lc, globalfilter, linkedentityMetaData, settings);
+            }
+
+
         }
 
         private List<Entity> RetrieveViews(List<EntityMetadata> entities)
