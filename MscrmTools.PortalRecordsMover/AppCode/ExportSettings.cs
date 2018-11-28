@@ -17,6 +17,7 @@ namespace MscrmTools.PortalRecordsMover.AppCode
         public DateTime? CreateFilter { get; set; }
         public DateTime? ModifyFilter { get; set; }
 
+        public bool ExportAsDirectory { get; set; }
         public String LastExportPath { get; set; }
 
         public Guid WebsiteFilter { get; set; }

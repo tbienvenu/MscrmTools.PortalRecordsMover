@@ -123,6 +123,7 @@ namespace MscrmTools.PortalRecordsMover
                     settings = (ExportSettings)XmlSerializerHelper.Deserialize(xdoc.OuterXml, typeof(ExportSettings));
 
                     chkActiveOnly.Checked = settings.ActiveItemsOnly;
+                    chkExportAsDir.Checked = settings.ExportAsDirectory;
                     docCreateFilter.IsEnabled = settings.CreateFilter.HasValue;
                     docCreateFilter.SelectedDate = settings.CreateFilter ?? DateTime.Today;
                     docModifyFilter.IsEnabled = settings.ModifyFilter.HasValue;
@@ -482,6 +483,7 @@ namespace MscrmTools.PortalRecordsMover
             settings.SelectedEntities = ecpEntities.SelectedMetadatas.Select(emd => emd.LogicalName).ToList();
             settings.AllEntities = ecpEntities.Metadata;
             settings.ActiveItemsOnly = chkActiveOnly.Checked;
+            settings.ExportAsDirectory = chkExportAsDir.Checked;
         }
 
         private void Import()
@@ -502,7 +504,7 @@ namespace MscrmTools.PortalRecordsMover
 
             lblProgress.Text = "Deserializing file...";
             SendMessageToStatusBar?.Invoke(this, new StatusBarMessageEventArgs("Deserializing file..."));
-
+            
             EntityCollection ec;
             using (var reader = new StreamReader(txtImportFilePath.Text))
             {
@@ -726,7 +728,7 @@ namespace MscrmTools.PortalRecordsMover
                 ColumnSet = new ColumnSet(true),
                 Criteria = new FilterExpression()
             };
-
+            
             if (settings.CreateFilter.HasValue)
             {
                 query.Criteria.AddCondition("createdon", ConditionOperator.OnOrAfter, settings.CreateFilter.Value.ToString("yyyy-MM-dd"));
@@ -838,6 +840,13 @@ namespace MscrmTools.PortalRecordsMover
         }
 
         #endregion Methods
+
+
+        private void chkExportAsDir_CheckedChanged(object sender, EventArgs e)
+        {
+            settings.ExportAsDirectory = (sender as CheckBox).Checked;
+        }
+
     }
 
 }
