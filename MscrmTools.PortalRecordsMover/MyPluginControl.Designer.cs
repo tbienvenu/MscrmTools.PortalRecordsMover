@@ -53,6 +53,7 @@ namespace MscrmTools.PortalRecordsMover
             this.tabCtrl = new System.Windows.Forms.TabControl();
             this.pnlTabSelection = new System.Windows.Forms.Panel();
             this.cbbTabSelection = new System.Windows.Forms.ComboBox();
+            this.chkExportAsDir = new System.Windows.Forms.CheckBox();
             this.scMain = new System.Windows.Forms.SplitContainer();
             this.ecpEntities = new MscrmTools.PortalRecordsMover.Controls.EntityPickerControl();
             this.pnlImport = new System.Windows.Forms.Panel();
@@ -235,6 +236,7 @@ namespace MscrmTools.PortalRecordsMover
             // gbOptions
             // 
             this.gbOptions.Controls.Add(this.chkActiveOnly);
+            this.gbOptions.Controls.Add(this.chkExportAsDir);
             this.gbOptions.Controls.Add(this.wpcWebsiteFilter);
             this.gbOptions.Controls.Add(this.docModifyFilter);
             this.gbOptions.Controls.Add(this.docCreateFilter);
@@ -258,6 +260,18 @@ namespace MscrmTools.PortalRecordsMover
             this.chkActiveOnly.TabIndex = 3;
             this.chkActiveOnly.Text = "Get only active records";
             this.chkActiveOnly.UseVisualStyleBackColor = true;
+            // 
+            // chkExportAsDir
+            // 
+            this.chkExportAsDir.AutoSize = true;
+            this.chkExportAsDir.Location = new System.Drawing.Point(4, 155);
+            this.chkExportAsDir.Margin = new System.Windows.Forms.Padding(2);
+            this.chkExportAsDir.Name = "chkExportAsDir";
+            this.chkExportAsDir.Size = new System.Drawing.Size(172, 17);
+            this.chkExportAsDir.TabIndex = 6;
+            this.chkExportAsDir.Text = "Import from/Export as Directory";
+            this.chkExportAsDir.UseVisualStyleBackColor = true;
+            this.chkExportAsDir.CheckedChanged += new System.EventHandler(this.chkExportAsDir_CheckedChanged);
             // 
             // wpcWebsiteFilter
             // 
@@ -656,5 +670,6 @@ namespace MscrmTools.PortalRecordsMover
         private System.Windows.Forms.ToolStripMenuItem loadSettingsToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem saveSettingsToolStripMenuItem;
         private System.Windows.Forms.Button btnCancel;
+        private System.Windows.Forms.CheckBox chkExportAsDir;
     }
 }
