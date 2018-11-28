@@ -52,13 +52,14 @@ namespace MscrmTools.PortalRecordsMover
             var ofd = new OpenFileDialog
             {
                 Filter = "XML File (*.xml)|*.xml",
-                Title = "Select the file containing portal records to import"
+                    Title = "Select the file containing portal records to import",
+                    FileName = settings.LastExportPath
             };
 
             if (ofd.ShowDialog(this) == DialogResult.OK)
             {
                 btnImport.Enabled = true;
-                txtImportFilePath.Text = ofd.FileName;
+                settings.LastExportPath = txtImportFilePath.Text = ofd.FileName;
             }
             else if (txtImportFilePath.Text.Length == 0)
             {
@@ -245,23 +246,25 @@ namespace MscrmTools.PortalRecordsMover
                     var list = (EntityCollection)evt.Result;
 
                     var sfd = new SaveFileDialog
-                    {
-                        Filter = "XML document (*.xml)|*.xml",
-                        AddExtension = true
-                    };
+            {
+                Filter = "XML document (*.xml)|*.xml",
+                AddExtension = true,
+                FileName = settings.LastExportPath
+            };
 
-                    if (sfd.ShowDialog(this) == DialogResult.OK)
-                    {
-                        var xwSettings = new XmlWriterSettings { Indent = true };
-                        var serializer = new DataContractSerializer(typeof(EntityCollection), new List<Type> { typeof(Entity) });
+            if (sfd.ShowDialog(this) == DialogResult.OK)
+            {
+                settings.LastExportPath = sfd.FileName;
+                var xwSettings = new XmlWriterSettings { Indent = true };
+                var serializer = new DataContractSerializer(typeof(EntityCollection), new List<Type> { typeof(Entity) });
 
-                        using (var w = XmlWriter.Create(sfd.FileName, xwSettings))
-                        {
-                            serializer.WriteObject(w, list);
-                        }
+                using (var w = XmlWriter.Create(sfd.FileName, xwSettings))
+                {
+                    serializer.WriteObject(w, list);
+                }
 
-                        MessageBox.Show(this, $"Records exported to {sfd.FileName}!", "Success", MessageBoxButtons.OK,
-                            MessageBoxIcon.Information);
+                MessageBox.Show(this, $"Records exported to {sfd.FileName}!", "Success", MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
                     }
                 },
                 ProgressChanged = evt =>
