@@ -49,17 +49,26 @@ namespace MscrmTools.PortalRecordsMover
 
         private void btnBrowseImportFile_Click(object sender, EventArgs e)
         {
-            var ofd = new OpenFileDialog
-            {
-                Filter = "XML File (*.xml)|*.xml",
+            CommonDialog fd;
+            if (settings.ExportAsDirectory) {
+                fd = new FolderBrowserDialog
+                {
+                    Description = "Select the file containing portal records to import",
+                    SelectedPath = settings.LastExportPath
+                };
+            } else {
+                fd = new OpenFileDialog
+                {
+                    Filter = "XML File (*.xml)|*.xml",
                     Title = "Select the file containing portal records to import",
                     FileName = settings.LastExportPath
-            };
+                };
+            }
 
-            if (ofd.ShowDialog(this) == DialogResult.OK)
+            if (fd.ShowDialog(this) == DialogResult.OK)
             {
                 btnImport.Enabled = true;
-                settings.LastExportPath = txtImportFilePath.Text = ofd.FileName;
+                settings.LastExportPath = txtImportFilePath.Text = (fd is OpenFileDialog) ? (fd as OpenFileDialog).FileName : (fd as FolderBrowserDialog).SelectedPath;
             }
             else if (txtImportFilePath.Text.Length == 0)
             {
@@ -605,26 +614,50 @@ namespace MscrmTools.PortalRecordsMover
             {
                 return;
             }
-
-            if (!File.Exists(txtImportFilePath.Text))
+            if (settings.ExportAsDirectory)
             {
-                MessageBox.Show(this, $"The file {txtImportFilePath.Text} does not exist!", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                if (!Directory.Exists(txtImportFilePath.Text))
+                {
+                    MessageBox.Show(this, $"The directory {txtImportFilePath.Text} does not exist!", "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
             }
-
+            else
+            {
+                if (!File.Exists(txtImportFilePath.Text))
+                {
+                    MessageBox.Show(this, $"The file {txtImportFilePath.Text} does not exist!", "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+            }
             btnCancel.Visible = true;
 
             lblProgress.Text = "Deserializing file...";
             SendMessageToStatusBar?.Invoke(this, new StatusBarMessageEventArgs("Deserializing file..."));
             
             EntityCollection ec;
-            using (var reader = new StreamReader(txtImportFilePath.Text))
+            if (settings.ExportAsDirectory)
             {
-                var serializer = new DataContractSerializer(typeof(EntityCollection), new List<Type> { typeof(Entity) });
-                ec = (EntityCollection)serializer.ReadObject(reader.BaseStream);
+                ec = new EntityCollection();
+                var xmlfiles = Directory.EnumerateFiles(txtImportFilePath.Text, "*.xml", SearchOption.AllDirectories);
+                var serializer = new DataContractSerializer(typeof(Entity), new List<Type> { typeof(EntityCollection) });
+                foreach (var file in xmlfiles)
+                {
+                    using (var reader = new StreamReader(file))
+                    {
+                        ec.Entities.Add((Entity)serializer.ReadObject(reader.BaseStream));
+                    }
+                }
             }
-
+            else { 
+                using (var reader = new StreamReader(txtImportFilePath.Text))
+                {
+                    var serializer = new DataContractSerializer(typeof(EntityCollection), new List<Type> { typeof(Entity) });
+                    ec = (EntityCollection)serializer.ReadObject(reader.BaseStream);
+                }
+            }
             var webSitesId = ec.Entities.SelectMany(e => e.Attributes)
                 .Where(a => a.Value is EntityReference && ((EntityReference)a.Value).LogicalName == "adx_website")
                 .Select(a => ((EntityReference)a.Value).Id)
